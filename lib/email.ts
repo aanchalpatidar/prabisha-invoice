@@ -29,7 +29,7 @@ const createTransporter = () => {
   return nodemailer.createTransport(config)
 }
 
-export async function sendInvoiceEmail(invoice: any) {
+export async function sendInvoiceEmail(invoice: any, pdfBuffer?: Buffer) {
   try {
     const transporter = createTransporter()
 
@@ -38,7 +38,7 @@ export async function sendInvoiceEmail(invoice: any) {
     await transporter.verify()
     console.log("SMTP connection verified successfully")
 
-    const mailOptions = {
+    const mailOptions: any = {
       from: `"${process.env.FROM_NAME}" <${process.env.FROM_EMAIL}>`,
       to: invoice.customer.email,
       cc: process.env.FROM_EMAIL, // Send copy to admin
@@ -169,6 +169,19 @@ export async function sendInvoiceEmail(invoice: any) {
       `,
     }
 
+    // Add PDF attachment if provided
+    if (pdfBuffer) {
+      const filename = `Invoice-${invoice.invoiceNumber}-${new Date().toISOString().split("T")[0]}.pdf`;
+      mailOptions.attachments = [
+        {
+          filename,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }
+      ];
+      console.log(`Attaching PDF invoice: ${filename}`);
+    }
+
     console.log("Sending email to:", invoice.customer.email)
     const result = await transporter.sendMail(mailOptions)
     console.log("Email sent successfully:", result.messageId)
@@ -179,7 +192,7 @@ export async function sendInvoiceEmail(invoice: any) {
   }
 }
 
-export async function sendQuotationEmail(quotation: any) {
+export async function sendQuotationEmail(quotation: any, pdfBuffer?: Buffer) {
   try {
     const transporter = createTransporter()
 
@@ -187,7 +200,7 @@ export async function sendQuotationEmail(quotation: any) {
     await transporter.verify()
     console.log("SMTP connection verified successfully")
 
-    const mailOptions = {
+    const mailOptions: any = {
       from: `"${process.env.FROM_NAME}" <${process.env.FROM_EMAIL}>`,
       to: quotation.customer.email,
       cc: process.env.FROM_EMAIL,
@@ -293,6 +306,19 @@ export async function sendQuotationEmail(quotation: any) {
           </div>
         </div>
       `,
+    }
+
+    // Add PDF attachment if provided
+    if (pdfBuffer) {
+      const filename = `Quotation-${quotation.quotationNumber}-${new Date().toISOString().split("T")[0]}.pdf`;
+      mailOptions.attachments = [
+        {
+          filename,
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }
+      ];
+      console.log(`Attaching PDF quotation: ${filename}`);
     }
 
     console.log("Sending quotation email to:", quotation.customer.email)

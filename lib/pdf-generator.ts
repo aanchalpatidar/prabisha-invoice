@@ -1,21 +1,43 @@
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
 
-export async function generatePDF(data: any, template: string, type: "invoice" | "quotation") {
+export async function generatePDF(data: any, template: string, type: "invoice" | "quotation", returnBuffer = false) {
   try {
     // Create a temporary div to render the template
     const tempDiv = document.createElement("div")
     tempDiv.style.position = "absolute"
     tempDiv.style.left = "-9999px"
-    tempDiv.style.width = "210mm"
+    tempDiv.style.width = "210mm" // A4 width
     tempDiv.style.backgroundColor = "white"
     tempDiv.style.padding = "0"
+    tempDiv.style.margin = "0"
     tempDiv.style.fontFamily = "Arial, sans-serif"
+    tempDiv.style.boxSizing = "border-box"
+    tempDiv.style.overflow = "hidden"
 
     // Add the template content
     tempDiv.innerHTML = await createHTMLTemplate(data, template, type)
 
     document.body.appendChild(tempDiv)
+
+    // Apply additional styles to ensure proper rendering
+    const allElements = tempDiv.querySelectorAll('*');
+    allElements.forEach(el => {
+      const element = el as HTMLElement;
+      if (element.style) {
+        element.style.boxSizing = 'border-box';
+        
+        // Ensure table cells have proper spacing
+        if (element.tagName === 'TD' || element.tagName === 'TH') {
+          element.style.padding = element.style.padding || '8px';
+        }
+        
+        // Ensure images don't overflow
+        if (element.tagName === 'IMG') {
+          element.style.maxWidth = '100%';
+        }
+      }
+    });
 
     // Wait for images to load
     const images = tempDiv.querySelectorAll("img")
@@ -36,7 +58,7 @@ export async function generatePDF(data: any, template: string, type: "invoice" |
 
     // Convert to canvas with better options
     const canvas = await html2canvas(tempDiv, {
-      scale: 2,
+      scale: 3, // Higher scale for better quality
       useCORS: true,
       allowTaint: true,
       backgroundColor: "#ffffff",
@@ -51,6 +73,9 @@ export async function generatePDF(data: any, template: string, type: "invoice" |
           clonedDiv.style.fontSize = "14px"
           clonedDiv.style.lineHeight = "1.4"
           clonedDiv.style.color = "#000000"
+          clonedDiv.style.width = "210mm" // A4 width
+          clonedDiv.style.margin = "0"
+          clonedDiv.style.padding = "0"
         }
       },
     })
@@ -59,11 +84,17 @@ export async function generatePDF(data: any, template: string, type: "invoice" |
     document.body.removeChild(tempDiv)
 
     // Create PDF with better settings
-    const pdf = new jsPDF("p", "mm", "a4")
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+      compress: true,
+    })
+    
     const imgData = canvas.toDataURL("image/png", 1.0)
 
-    const pdfWidth = 210
-    const pdfHeight = 297
+    const pdfWidth = 210 // A4 width in mm
+    const pdfHeight = 297 // A4 height in mm
     const imgWidth = pdfWidth
     const imgHeight = (canvas.height * pdfWidth) / canvas.width
 
@@ -82,9 +113,15 @@ export async function generatePDF(data: any, template: string, type: "invoice" |
       heightLeft -= pdfHeight
     }
 
-    // Download the PDF
-    const filename = `${type}-${data.invoiceNumber || data.quotationNumber}-${new Date().toISOString().split("T")[0]}.pdf`
-    pdf.save(filename)
+    // Return buffer or save file
+    if (returnBuffer) {
+      return pdf.output('arraybuffer');
+    } else {
+      // Download the PDF
+      const filename = `${type}-${data.invoiceNumber || data.quotationNumber}-${new Date().toISOString().split("T")[0]}.pdf`
+      pdf.save(filename)
+      return null;
+    }
   } catch (error) {
     console.error("Error generating PDF:", error)
     throw error
@@ -113,11 +150,16 @@ async function createHTMLTemplate(data: any, template: string, type: "invoice" |
     }
   }
 
-  if (template === "template2") {
-    return createTemplate2(data, type, formatCurrency, formatDate, logoBase64)
+  switch (template) {
+    case "template2":
+      return createTemplate2(data, type, formatCurrency, formatDate, logoBase64)
+    case "template3":
+      return createTemplate3(data, type, formatCurrency, formatDate, logoBase64)
+    case "template4":
+      return createTemplate4(data, type, formatCurrency, formatDate, logoBase64)
+    default:
+      return createTemplate1(data, type, formatCurrency, formatDate, logoBase64)
   }
-
-  return createTemplate1(data, type, formatCurrency, formatDate, logoBase64)
 }
 
 async function convertImageToBase64(url: string): Promise<string> {
