@@ -5,13 +5,14 @@ import "./globals.css"
 import { CurrencyProvider } from "@/contexts/currency-context"
 import { Toaster } from "sonner"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Sidebar } from "@/components/sidebar"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Invoice & Quotation Generator",
   description: "Professional invoice and quotation generator tool",
-    generator: 'v0.dev'
+  generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -22,9 +23,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <CurrencyProvider>
-            {children}
+            <div className="flex min-h-screen">
+              <Sidebar />
+              <div className="flex-1 md:ml-64">
+                <main className="p-4 md:p-8">
+                  {children}
+                </main>
+              </div>
+            </div>
             <Toaster position="top-right" />
           </CurrencyProvider>
         </ThemeProvider>

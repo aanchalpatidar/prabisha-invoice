@@ -1,5 +1,6 @@
 import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
+import { createTemplate5 } from "./template5"
 
 export async function generatePDF(data: any, template: string, type: "invoice" | "quotation", returnBuffer = false) {
   try {
@@ -9,11 +10,12 @@ export async function generatePDF(data: any, template: string, type: "invoice" |
     tempDiv.style.left = "-9999px"
     tempDiv.style.width = "210mm" // A4 width
     tempDiv.style.backgroundColor = "white"
-    tempDiv.style.padding = "0"
+    tempDiv.style.padding = "20px"
     tempDiv.style.margin = "0"
     tempDiv.style.fontFamily = "Arial, sans-serif"
     tempDiv.style.boxSizing = "border-box"
     tempDiv.style.overflow = "hidden"
+    tempDiv.style.maxWidth = "210mm" // Ensure it doesn't exceed A4 width
 
     // Add the template content
     tempDiv.innerHTML = await createHTMLTemplate(data, template, type)
@@ -35,6 +37,21 @@ export async function generatePDF(data: any, template: string, type: "invoice" |
         // Ensure images don't overflow
         if (element.tagName === 'IMG') {
           element.style.maxWidth = '100%';
+          element.style.maxHeight = '80px';
+          element.style.objectFit = 'contain';
+        }
+
+        // Ensure tables don't overflow
+        if (element.tagName === 'TABLE') {
+          element.style.width = '100%';
+          element.style.tableLayout = 'fixed';
+          element.style.borderCollapse = 'collapse';
+        }
+
+        // Ensure text doesn't overflow
+        if (element.tagName === 'P' || element.tagName === 'DIV' || element.tagName === 'SPAN') {
+          element.style.wordWrap = 'break-word';
+          element.style.overflowWrap = 'break-word';
         }
       }
     });
@@ -75,7 +92,8 @@ export async function generatePDF(data: any, template: string, type: "invoice" |
           clonedDiv.style.color = "#000000"
           clonedDiv.style.width = "210mm" // A4 width
           clonedDiv.style.margin = "0"
-          clonedDiv.style.padding = "0"
+          clonedDiv.style.padding = "20px"
+          clonedDiv.style.boxSizing = "border-box"
         }
       },
     })
@@ -89,6 +107,7 @@ export async function generatePDF(data: any, template: string, type: "invoice" |
       unit: "mm",
       format: "a4",
       compress: true,
+      hotfixes: ["px_scaling"], // Fix scaling issues
     })
     
     const imgData = canvas.toDataURL("image/png", 1.0)
@@ -157,6 +176,8 @@ async function createHTMLTemplate(data: any, template: string, type: "invoice" |
       return createTemplate3(data, type, formatCurrency, formatDate, logoBase64)
     case "template4":
       return createTemplate4(data, type, formatCurrency, formatDate, logoBase64)
+    case "template5":
+      return createTemplate5(data, type, formatCurrency, formatDate, logoBase64)
     default:
       return createTemplate1(data, type, formatCurrency, formatDate, logoBase64)
   }

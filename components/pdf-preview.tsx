@@ -7,6 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LoadingButton } from "@/components/loading-button"
 import { InvoiceTemplate1 } from "@/components/templates/invoice-template-1"
 import { InvoiceTemplate2 } from "@/components/templates/invoice-template-2"
+import { InvoiceTemplate3 } from "@/components/templates/invoice-template-3"
+import { InvoiceTemplate4 } from "@/components/templates/invoice-template-4"
+import { InvoiceTemplate5 } from "@/components/templates/invoice-template-5"
 import { Download, X } from "lucide-react"
 import { generatePDF } from "@/lib/pdf-generator"
 import { toast } from "sonner"
@@ -41,6 +44,12 @@ export function PDFPreview({ type, data, onClose, onDownload }: PDFPreviewProps)
         return <InvoiceTemplate1 data={data} type={type} />
       case "template2":
         return <InvoiceTemplate2 data={data} type={type} />
+      case "template3":
+        return <InvoiceTemplate3 data={data} type={type} />
+      case "template4":
+        return <InvoiceTemplate4 data={data} type={type} />
+      case "template5":
+        return <InvoiceTemplate5 data={data} type={type} />
       default:
         return <InvoiceTemplate1 data={data} type={type} />
     }
@@ -60,6 +69,9 @@ export function PDFPreview({ type, data, onClose, onDownload }: PDFPreviewProps)
                 <SelectContent>
                   <SelectItem value="template1">Template 1</SelectItem>
                   <SelectItem value="template2">Template 2</SelectItem>
+                  <SelectItem value="template3">Template 3</SelectItem>
+                  <SelectItem value="template4">Template 4</SelectItem>
+                  <SelectItem value="template5">Template 5</SelectItem>
                 </SelectContent>
               </Select>
               <LoadingButton onClick={handleDownload} loading={downloading}>

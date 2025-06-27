@@ -4,9 +4,10 @@ import { prisma } from "@/lib/prisma"
 export async function GET() {
   try {
     const company = await prisma.company.findFirst()
-    return NextResponse.json(company)
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch company" }, { status: 500 })
+    return NextResponse.json(company || null)
+  } catch (error: any) {
+    console.error("GET company error:", error)
+    return NextResponse.json({ error: `Failed to fetch company: ${error.message}` }, { status: 500 })
   }
 }
 
@@ -19,8 +20,9 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(company)
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to create company" }, { status: 500 })
+  } catch (error: any) {
+    console.error("POST company error:", error)
+    return NextResponse.json({ error: `Failed to create company: ${error.message}` }, { status: 500 })
   }
 }
 
@@ -40,7 +42,8 @@ export async function PUT(request: NextRequest) {
     })
 
     return NextResponse.json(company)
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to update company" }, { status: 500 })
+  } catch (error: any) {
+    console.error("PUT company error:", error)
+    return NextResponse.json({ error: `Failed to update company: ${error.message}` }, { status: 500 })
   }
 }
