@@ -1,0 +1,153 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id          String @id @default(cuid())
+  name        String
+  email       String
+  phone       String
+  address     String @db.Text
+  logoUrl     String?
+  bankName    String?
+  bankAccount String?
+  bankIFSC    String?
+  taxNumber   String?
+  primaryColor String? // HEX color for primary
+  secondaryColor String? // HEX color for secondary
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  invoices Invoice[]
+  quotations Quotation[]
+
+  @@map("companies")
+}
+
+model Customer {
+  id              String @id @default(cuid())
+  name            String
+  email           String
+  phone           String?
+  billingAddress  String @db.Text
+  shippingAddress String? @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  invoices Invoice[]
+  quotations Quotation[]
+
+  @@map("customers")
+}
+
+model Service {
+  id          String @id @default(cuid())
+  name        String
+  description String? @db.Text
+  price       Decimal @db.Decimal(10, 2)
+  taxRate     Decimal @db.Decimal(5, 2) @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("services")
+}
+
+model Invoice {
+  id          String @id @default(cuid())
+  invoiceNumber String @unique
+  companyId   String
+  customerId  String
+  issueDate   DateTime
+  dueDate     DateTime
+  subtotal    Decimal @db.Decimal(10, 2)
+  taxAmount   Decimal @db.Decimal(10, 2)
+  total       Decimal @db.Decimal(10, 2)
+  currency    String @default("USD")
+  status      InvoiceStatus @default(DRAFT)
+  notes       String? @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  lineItems   InvoiceLineItem[]
+
+  @@map("invoices")
+}
+
+model Quotation {
+  id            String @id @default(cuid())
+  quotationNumber String @unique
+  companyId     String
+  customerId    String
+  issueDate     DateTime
+  validUntil    DateTime
+  subtotal      Decimal @db.Decimal(10, 2)
+  taxAmount     Decimal @db.Decimal(10, 2)
+  total         Decimal @db.Decimal(10, 2)
+  currency      String @default("USD")
+  status        QuotationStatus @default(DRAFT)
+  notes         String? @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company       Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  lineItems     QuotationLineItem[]
+
+  @@map("quotations")
+}
+
+model InvoiceLineItem {
+  id          String @id @default(cuid())
+  invoiceId   String
+  name        String
+  description String? @db.Text
+  quantity    Decimal @db.Decimal(10, 2)
+  price       Decimal @db.Decimal(10, 2)
+  taxRate     Decimal @db.Decimal(5, 2) @default(0)
+  total       Decimal @db.Decimal(10, 2)
+
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_line_items")
+}
+
+model QuotationLineItem {
+  id          String @id @default(cuid())
+  quotationId String
+  name        String
+  description String? @db.Text
+  quantity    Decimal @db.Decimal(10, 2)
+  price       Decimal @db.Decimal(10, 2)
+  taxRate     Decimal @db.Decimal(5, 2) @default(0)
+  total       Decimal @db.Decimal(10, 2)
+
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@map("quotation_line_items")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
