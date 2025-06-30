@@ -1,54 +1,68 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { generateQuotationNumber } from "@/lib/utils"
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const quotations = await prisma.quotation.findMany({
+      where: { organizationId: session.user.organizationId! },
       include: {
-        customer: {
+        company: true,
+        customer: true,
+        createdBy: {
           select: {
+            id: true,
             name: true,
-            email: true,
-          },
+            email: true
+          }
         },
+        lineItems: true,
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: 'desc' }
     })
 
     return NextResponse.json(quotations)
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch quotations" }, { status: 500 })
+  } catch (error: any) {
+    console.error("GET quotations error:", error)
+    return NextResponse.json({ error: `Failed to fetch quotations: ${error.message}` }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const data = await request.json()
-    const { customerId, issueDate, validUntil, currency, subtotal, taxAmount, total, notes, lineItems } = data
-
-    const quotationNumber = generateQuotationNumber()
-
-    // Get company for the quotation
-    const company = await prisma.company.findFirst()
-    if (!company) {
-      return NextResponse.json({ error: "Company not found. Please set up company details first." }, { status: 400 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    const data = await request.json()
+    const { lineItems, ...quotationData } = data
+
+    // Generate quotation number
+    const lastQuotation = await prisma.quotation.findFirst({
+      where: { organizationId: session.user.organizationId! },
+      orderBy: { quotationNumber: 'desc' }
+    })
+
+    const lastNumber = lastQuotation ? parseInt(lastQuotation.quotationNumber.replace('QUO-', '')) : 0
+    const nextNumber = lastNumber + 1
+    const quotationNumber = `QUO-${nextNumber.toString().padStart(4, '0')}`
 
     const quotation = await prisma.quotation.create({
       data: {
+        ...quotationData,
+        organizationId: session.user.organizationId!,
+        createdById: session.user.id,
         quotationNumber,
-        companyId: company.id,
-        customerId,
-        issueDate: new Date(issueDate),
-        validUntil: new Date(validUntil),
-        currency,
-        subtotal,
-        taxAmount,
-        total,
-        notes,
         lineItems: {
           create: lineItems.map((item: any) => ({
             name: item.name,
@@ -56,19 +70,20 @@ export async function POST(request: NextRequest) {
             quantity: item.quantity,
             price: item.price,
             taxRate: item.taxRate,
-            total: item.quantity * item.price,
-          })),
-        },
+            total: item.quantity * item.price
+          }))
+        }
       },
       include: {
+        company: true,
         customer: true,
         lineItems: true,
-      },
+      }
     })
 
     return NextResponse.json(quotation)
-  } catch (error) {
-    console.error("Error creating quotation:", error)
-    return NextResponse.json({ error: "Failed to create quotation" }, { status: 500 })
+  } catch (error: any) {
+    console.error("POST quotation error:", error)
+    return NextResponse.json({ error: `Failed to create quotation: ${error.message}` }, { status: 500 })
   }
 }

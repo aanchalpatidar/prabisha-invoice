@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { 
   Home, 
   FileText, 
@@ -13,94 +14,218 @@ import {
   Building,
   BarChart,
   Menu,
-  X
+  X,
+  Shield,
+  UserPlus
 } from "lucide-react"
-import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
+import { CompanyLogo } from "@/components/company-logo"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
-export function Sidebar({ open = true, setOpen }: { open?: boolean, setOpen?: (open: boolean) => void }) {
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
+
+export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
+  const { data: session } = useSession()
 
-  const navItems = [
-    { name: "Dashboard", href: "/", icon: Home },
-    { name: "Invoices", href: "/invoices", icon: FileText },
-    { name: "Quotations", href: "/quotations", icon: FileCheck },
-    { name: "Customers", href: "/customers", icon: Users },
-    { name: "Company", href: "/company", icon: Building },
-    { name: "Reports", href: "/reports", icon: BarChart },
+  const navigation = [
+    {
+      title: "Dashboard",
+      href: "/dashboard",
+      icon: "🏠",
+    },
+    {
+      title: "Invoices",
+      href: "/invoices",
+      icon: "📄",
+    },
+    {
+      title: "Quotations",
+      href: "/quotations",
+      icon: "📋",
+    },
+    {
+      title: "Customers",
+      href: "/customers",
+      icon: "👥",
+    },
+    {
+      title: "Reports",
+      href: "/reports",
+      icon: "📊",
+    },
+    {
+      title: "Help",
+      href: "/help",
+      icon: "❓",
+    },
   ]
 
-  // Helper to detect if screen is mobile
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768 && setOpen) setOpen(true);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [setOpen]);
+  const adminNavigation = [
+    {
+      title: "Users",
+      href: "/admin/users",
+      icon: "👤",
+    },
+    {
+      title: "Roles",
+      href: "/admin/roles",
+      icon: "🔐",
+    },
+    {
+      title: "System Settings",
+      href: "/admin/system-settings",
+      icon: "⚙️",
+    },
+  ]
+
+  // Check if user is admin
+  const isAdmin = session?.user?.role?.name === 'ADMIN'
 
   return (
     <>
-      {/* Overlay for mobile */}
-      {open && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
-          onClick={() => setOpen && setOpen(false)}
-        />
-      )}
-      {/* Sidebar */}
-      <aside 
-        className={cn(
-          "fixed top-0 left-0 z-40 h-screen transition-transform bg-white border-r border-gray-200 dark:bg-gray-800 dark:border-gray-700 font-poppins",
-          "w-64 md:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full md:-translate-x-64"
-        )}
-      >
-        <div className="h-full px-3 py-4 overflow-y-auto">
-          <div className="flex items-center justify-center mb-5 p-2">
-            <h1 className="text-xl font-bold text-primary">Invoice Generator</h1>
-          </div>
-          <ul className="space-y-2 font-medium">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href
-              const Icon = item.icon
-              return (
-                <li key={item.href}>
-                  <Link 
-                    href={item.href}
-                    className={cn(
-                      "flex items-center p-3 rounded-lg group hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200",
-                      isActive ? "bg-primary text-white hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/90" : "text-gray-900 dark:text-white"
-                    )}
-                    onClick={() => {
-                      if (typeof window !== 'undefined' && window.innerWidth < 768 && setOpen) setOpen(false);
-                    }}
-                  >
-                    <Icon className={cn(
-                      "w-5 h-5 transition duration-75",
-                      isActive ? "text-white" : "text-gray-500 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white"
-                    )} />
-                    <span className="ml-3">{item.name}</span>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-          <div className="pt-5 mt-5 space-y-2 border-t border-gray-200 dark:border-gray-700">
-            <Link 
-              href="/help"
-              className="flex items-center p-3 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group"
-              onClick={() => {
-                if (typeof window !== 'undefined' && window.innerWidth < 768 && setOpen) setOpen(false);
-              }}
-            >
-              <Mail className="w-5 h-5 text-gray-500 transition duration-75 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white" />
-              <span className="ml-3">Help & Support</span>
-            </Link>
-          </div>
-        </div>
-      </aside>
+      {/* Mobile Sidebar */}
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            className="mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 lg:hidden"
+          >
+            <Menu className="h-6 w-6" />
+            <span className="sr-only">Toggle Menu</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="pl-1 pr-0">
+          <MobileSidebar />
+        </SheetContent>
+      </Sheet>
+
+      {/* Desktop Sidebar */}
+      <div className={cn("hidden lg:block", className)}>
+        <DesktopSidebar />
+      </div>
     </>
   )
+
+  function MobileSidebar() {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex h-14 items-center border-b px-4">
+          <CompanyLogo />
+        </div>
+        <ScrollArea className="flex-1 px-4">
+          <div className="space-y-4 py-4">
+            <div className="px-3 py-2">
+              <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
+                Main
+              </h2>
+              <div className="space-y-1">
+                {navigation.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                      pathname === item.href
+                        ? "bg-primary-custom text-primary-foreground-custom"
+                        : "transparent"
+                    )}
+                  >
+                    <span className="mr-2">{item.icon}</span>
+                    {item.title}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            {isAdmin && (
+              <div className="px-3 py-2">
+                <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
+                  Admin
+                </h2>
+                <div className="space-y-1">
+                  {adminNavigation.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                        pathname === item.href
+                          ? "bg-primary-custom text-primary-foreground-custom"
+                          : "transparent"
+                      )}
+                    >
+                      <span className="mr-2">{item.icon}</span>
+                      {item.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  }
+
+  function DesktopSidebar() {
+    return (
+      <div className="flex h-full w-64 flex-col border-r bg-background">
+        <div className="flex h-14 items-center border-b px-6">
+          <CompanyLogo />
+        </div>
+        <ScrollArea className="flex-1">
+          <div className="space-y-4 py-4">
+            <div className="px-3 py-2">
+              <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
+                Main
+              </h2>
+              <div className="space-y-1">
+                {navigation.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                      pathname === item.href
+                        ? "bg-primary-custom text-primary-foreground-custom"
+                        : "transparent"
+                    )}
+                  >
+                    <span className="mr-2">{item.icon}</span>
+                    {item.title}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            {isAdmin && (
+              <div className="px-3 py-2">
+                <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
+                  Admin
+                </h2>
+                <div className="space-y-1">
+                  {adminNavigation.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                        pathname === item.href
+                          ? "bg-primary-custom text-primary-foreground-custom"
+                          : "transparent"
+                      )}
+                    >
+                      <span className="mr-2">{item.icon}</span>
+                      {item.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  }
 }

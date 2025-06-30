@@ -1,54 +1,67 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { generateInvoiceNumber } from "@/lib/utils"
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const invoices = await prisma.invoice.findMany({
+      where: { organizationId: session.user.organizationId! },
       include: {
-        customer: {
+        company: true,
+        customer: true,
+        createdBy: {
           select: {
+            id: true,
             name: true,
-            email: true,
-          },
+            email: true
+          }
         },
+        lineItems: true,
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: 'desc' }
     })
 
     return NextResponse.json(invoices)
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch invoices" }, { status: 500 })
+  } catch (error: any) {
+    console.error("GET invoices error:", error)
+    return NextResponse.json({ error: `Failed to fetch invoices: ${error.message}` }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const data = await request.json()
-    const { customerId, issueDate, dueDate, currency, subtotal, taxAmount, total, notes, lineItems } = data
-
-    // Get company for the invoice
-    const company = await prisma.company.findFirst()
-    if (!company) {
-      return NextResponse.json({ error: "Company not found. Please set up company details first." }, { status: 400 })
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const invoiceNumber = generateInvoiceNumber(company.name)
+    const data = await request.json()
+    const { lineItems, ...invoiceData } = data
+
+    // Generate invoice number
+    const lastInvoice = await prisma.invoice.findFirst({
+      where: { organizationId: session.user.organizationId! },
+      orderBy: { invoiceNumber: 'desc' }
+    })
+
+    const lastNumber = lastInvoice ? parseInt(lastInvoice.invoiceNumber.replace('INV-', '')) : 0
+    const nextNumber = lastNumber + 1
+    const invoiceNumber = `INV-${nextNumber.toString().padStart(4, '0')}`
 
     const invoice = await prisma.invoice.create({
       data: {
+        ...invoiceData,
+        organizationId: session.user.organizationId!,
+        createdById: session.user.id,
         invoiceNumber,
-        companyId: company.id,
-        customerId,
-        issueDate: new Date(issueDate),
-        dueDate: new Date(dueDate),
-        currency,
-        subtotal,
-        taxAmount,
-        total,
-        notes,
         lineItems: {
           create: lineItems.map((item: any) => ({
             name: item.name,
@@ -56,19 +69,20 @@ export async function POST(request: NextRequest) {
             quantity: item.quantity,
             price: item.price,
             taxRate: item.taxRate,
-            total: item.quantity * item.price,
-          })),
-        },
+            total: item.quantity * item.price
+          }))
+        }
       },
       include: {
+        company: true,
         customer: true,
         lineItems: true,
-      },
+      }
     })
 
     return NextResponse.json(invoice)
-  } catch (error) {
-    console.error("Error creating invoice:", error)
-    return NextResponse.json({ error: "Failed to create invoice" }, { status: 500 })
+  } catch (error: any) {
+    console.error("POST invoice error:", error)
+    return NextResponse.json({ error: `Failed to create invoice: ${error.message}` }, { status: 500 })
   }
 }

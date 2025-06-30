@@ -1,0 +1,16 @@
+{
+  "name": "Prabisha Invoice",
+  "short_name": "Prabisha Invoice",
+  "description": "Professional invoice and quotation management system for multiple organizations",
+  "icons": [
+    {
+      "src": "https://prabisha.com/wp-content/uploads/2023/10/Favicon-2.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#2563eb",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "start_url": "/"
+} 

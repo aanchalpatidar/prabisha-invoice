@@ -1,20 +1,20 @@
 "use client"
 
 import React from "react"
-
 import { useState } from "react"
 import { useFieldArray, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/loading-button"
-import { Plus, Trash2, Package } from "lucide-react"
+import { Plus, Trash2, Package, Edit2, Check, X } from "lucide-react"
 import { useCurrency } from "@/contexts/currency-context"
 import { ServiceSelector } from "@/components/service-selector"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 
 const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required"),
@@ -40,6 +40,7 @@ interface LineItemsFormProps {
 export function LineItemsForm({ initialData, onSubmit, onTotalsChange }: LineItemsFormProps) {
   const { formatCurrency } = useCurrency()
   const [loading, setLoading] = useState(false)
+  const [editingRow, setEditingRow] = useState<number | null>(null)
 
   const form = useForm<LineItemsFormData>({
     resolver: zodResolver(lineItemsSchema),
@@ -92,6 +93,22 @@ export function LineItemsForm({ initialData, onSubmit, onTotalsChange }: LineIte
     append({ name: "", description: "", quantity: 1, price: 0, taxRate: 0 })
   }
 
+  const startEditing = (index: number) => {
+    setEditingRow(index)
+  }
+
+  const stopEditing = () => {
+    setEditingRow(null)
+  }
+
+  const calculateItemTotal = (item: LineItem) => {
+    return item.quantity * item.price
+  }
+
+  const calculateItemTax = (item: LineItem) => {
+    return calculateItemTotal(item) * (item.taxRate / 100)
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -103,140 +120,229 @@ export function LineItemsForm({ initialData, onSubmit, onTotalsChange }: LineIte
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            <div className="space-y-4">
-              {fields.map((field, index) => (
-                <div key={field.id} className="border rounded-lg p-4 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-medium">Item {index + 1}</h4>
-                    {fields.length > 1 && (
-                      <Button type="button" variant="outline" size="sm" onClick={() => remove(index)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.name`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Item Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter item name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.description`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description (Optional)</FormLabel>
-                          <FormControl>
-                            <Textarea placeholder="Enter item description" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.quantity`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Quantity</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0.01"
-                              placeholder="1"
-                              {...field}
-                              onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.price`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Unit Price</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              placeholder="0.00"
-                              {...field}
-                              onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.taxRate`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tax Rate (%)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              max="100"
-                              placeholder="0"
-                              {...field}
-                              onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="flex items-end">
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Total: </span>
-                        <span className="font-medium">
-                          {formatCurrency(watchedItems[index]?.quantity * watchedItems[index]?.price || 0)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[30%]">Item Name</TableHead>
+                    <TableHead className="w-[15%]">Description</TableHead>
+                    <TableHead className="w-[10%] text-right">Qty</TableHead>
+                    <TableHead className="w-[15%] text-right">Unit Price</TableHead>
+                    <TableHead className="w-[10%] text-right">Tax %</TableHead>
+                    <TableHead className="w-[15%] text-right">Total</TableHead>
+                    <TableHead className="w-[5%] text-center">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {fields.map((field, index) => (
+                    <TableRow key={field.id} className="hover:bg-muted/50">
+                      <TableCell>
+                        {editingRow === index ? (
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.name`}
+                            render={({ field }) => (
+                              <FormItem className="space-y-0">
+                                <FormControl>
+                                  <Input 
+                                    placeholder="Item name" 
+                                    {...field} 
+                                    className="h-8"
+                                    autoFocus
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+                        ) : (
+                          <div className="font-medium">
+                            {watchedItems[index]?.name || "Untitled Item"}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingRow === index ? (
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.description`}
+                            render={({ field }) => (
+                              <FormItem className="space-y-0">
+                                <FormControl>
+                                  <Input 
+                                    placeholder="Description" 
+                                    {...field} 
+                                    className="h-8"
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+                        ) : (
+                          <div className="text-sm text-muted-foreground truncate max-w-[120px]">
+                            {watchedItems[index]?.description || "-"}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingRow === index ? (
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.quantity`}
+                            render={({ field }) => (
+                              <FormItem className="space-y-0">
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    placeholder="1"
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                                    className="h-8 w-20 text-right"
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+                        ) : (
+                          <div className="text-right font-medium">
+                            {watchedItems[index]?.quantity || 0}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingRow === index ? (
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.price`}
+                            render={({ field }) => (
+                              <FormItem className="space-y-0">
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="0.00"
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                                    className="h-8 w-24 text-right"
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+                        ) : (
+                          <div className="text-right font-medium">
+                            {formatCurrency(watchedItems[index]?.price || 0)}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingRow === index ? (
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.taxRate`}
+                            render={({ field }) => (
+                              <FormItem className="space-y-0">
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                    placeholder="0"
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                                    className="h-8 w-16 text-right"
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-xs" />
+                              </FormItem>
+                            )}
+                          />
+                        ) : (
+                          <div className="text-right">
+                            <Badge variant={watchedItems[index]?.taxRate > 0 ? "default" : "secondary"} className="text-xs">
+                              {watchedItems[index]?.taxRate || 0}%
+                            </Badge>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="font-bold">
+                          {formatCurrency(calculateItemTotal(watchedItems[index] || { quantity: 0, price: 0 }))}
+                        </div>
+                        {watchedItems[index]?.taxRate > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            Tax: {formatCurrency(calculateItemTax(watchedItems[index] || { quantity: 0, price: 0, taxRate: 0 }))}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {editingRow === index ? (
+                            <>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={stopEditing}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Check className="h-3 w-3 text-green-600" />
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => startEditing(index)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Edit2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                          {fields.length > 1 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => remove(index)}
+                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
 
-            <Button type="button" variant="outline" onClick={addItem} className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Item
-            </Button>
-
-            <ServiceSelector
-              onServiceSelect={(service) => {
-                append({
-                  name: service.name,
-                  description: service.description || "",
-                  quantity: 1,
-                  price: Number(service.price),
-                  taxRate: Number(service.taxRate),
-                })
-              }}
-            />
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={addItem} className="flex-1">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Item
+              </Button>
+              <ServiceSelector
+                onServiceSelect={(service) => {
+                  append({
+                    name: service.name,
+                    description: service.description || "",
+                    quantity: 1,
+                    price: Number(service.price),
+                    taxRate: Number(service.taxRate),
+                  })
+                }}
+              />
+            </div>
 
             <div className="border-t pt-4 space-y-2">
               <div className="flex justify-between">

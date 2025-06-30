@@ -4,41 +4,72 @@ import React from "react"
 import { Sidebar } from "@/components/sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { CurrencySwitcher } from "@/components/currency-switcher"
+import { CompanyLogo } from "@/components/company-logo"
 import { usePathname } from "next/navigation"
-import { X, Menu } from "lucide-react"
+import { useSession, signOut } from "next-auth/react"
+import { X, Menu, LogOut, User } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { UserNav } from "@/components/user-nav"
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellProps {
+  children: React.ReactNode;
+}
+
+export function AppShell({ children }: AppShellProps) {
+  const { data: session } = useSession();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
-  const isLanding = pathname === "/";
+  
+  // Check if current page is public (landing, auth pages)
+  const isPublicPage = pathname === "/" || pathname.startsWith("/auth");
+  
+  const handleLogout = () => {
+    signOut({ callbackUrl: "/" });
+  };
+  
+  if (isPublicPage) {
+    return <>{children}</>;
+  }
+
   return (
-    <>
-      {!isLanding && (
-        <header className="flex justify-between items-center p-4 border-b">
-          <button
-            className="md:hidden p-2 rounded bg-primary text-white mr-2"
-            onClick={() => setSidebarOpen((v) => !v)}
-            aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-          >
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-          <h1 className="text-xl font-bold">Invoice Generator</h1>
+    <div className="flex h-screen bg-background">
+      <Sidebar />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Header */}
+        <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:px-6">
+          <div className="flex flex-1 items-center gap-4">
+            <CompanyLogo />
+          </div>
           <div className="flex items-center gap-4">
-            <CurrencySwitcher />
             <ThemeToggle />
+            {session?.user && <UserNav user={session.user} />}
           </div>
         </header>
-      )}
-      <div className="flex min-h-screen">
-        {!isLanding && (
-          <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-        )}
-        <div className={isLanding ? "w-full" : sidebarOpen ? "flex-1 md:ml-64" : "flex-1"}>
-          <main className={isLanding ? "p-0" : "p-4 md:p-8"}>
-            {children}
-          </main>
-        </div>
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
       </div>
-    </>
+    </div>
   )
 } 

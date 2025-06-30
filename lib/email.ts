@@ -315,6 +315,80 @@ export async function sendQuotationEmail(quotation: any, pdfBuffer?: Buffer) {
   }
 }
 
+export async function sendUserLoginCredentials(user: any, password: string, loginUrl: string) {
+  try {
+    const transporter = createTransporter()
+
+    // Verify connection
+    console.log("Verifying SMTP connection...")
+    await transporter.verify()
+    console.log("SMTP connection verified successfully")
+
+    const mailOptions = {
+      from: `"${process.env.FROM_NAME}" <${process.env.FROM_EMAIL}>`,
+      to: user.email,
+      subject: `Your Login Credentials - ${process.env.NEXT_PUBLIC_APP_NAME || 'Prabisha Invoice'}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #2563eb; margin: 0;">Welcome to ${process.env.NEXT_PUBLIC_APP_NAME || 'Prabisha Invoice'}!</h1>
+          </div>
+          
+          <p>Dear ${user.name},</p>
+          <p>Your account has been created successfully. Here are your login credentials:</p>
+          
+          <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+            <h3 style="margin-top: 0; color: #2563eb;">Login Information</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold;">Email:</td>
+                <td style="padding: 8px 0;">${user.email}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold;">Password:</td>
+                <td style="padding: 8px 0; font-family: monospace; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">${password}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold;">Login URL:</td>
+                <td style="padding: 8px 0;">
+                  <a href="${loginUrl}" style="color: #2563eb; text-decoration: none;">${loginUrl}</a>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="background: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+            <h3 style="margin-top: 0; color: #10b981;">Security Notice</h3>
+            <ul style="margin: 0; padding-left: 20px;">
+              <li>Please change your password after your first login</li>
+              <li>Keep your credentials secure and don't share them with others</li>
+              <li>If you didn't request this account, please contact your administrator</li>
+            </ul>
+          </div>
+
+          <div style="margin-top: 30px;">
+            <a href="${loginUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              Login Now
+            </a>
+          </div>
+
+          <p style="margin-top: 30px; color: #6b7280; font-size: 14px;">
+            If you have any questions, please contact your system administrator.
+          </p>
+        </div>
+      `,
+    }
+
+    console.log("Sending login credentials to:", user.email)
+    const result = await transporter.sendMail(mailOptions)
+    console.log("Login credentials email sent successfully:", result.messageId)
+    return result
+  } catch (error) {
+    console.error("Email sending error:", error)
+    throw new Error(`Failed to send login credentials: ${error.message}`)
+  }
+}
+
 // Test email configuration
 export async function testEmailConnection() {
   try {

@@ -1,34 +1,36 @@
-import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { CurrencyProvider } from "@/contexts/currency-context"
-import { Toaster } from "sonner"
-import { ThemeProvider } from "@/components/theme-provider"
-import { AppShell } from "@/components/app-shell"
+import SessionWrapper from "@/components/session-wrapper"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Prabisha Invoice & Quotation Generator",
-  description: "Professional invoice and quotation generator tool",
-  generator: 'prabisha.com'
+  title: "Prabisha Invoice - Multi-Organization Invoice Management",
+  description: "Professional invoice and quotation management system for multiple organizations",
+  icons: {
+    icon: "https://prabisha.com/wp-content/uploads/2023/10/Favicon-2.png",
+    shortcut: "https://prabisha.com/wp-content/uploads/2023/10/Favicon-2.png",
+    apple: "https://prabisha.com/wp-content/uploads/2023/10/Favicon-2.png",
+  },
+  manifest: "/site.webmanifest",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const session = await getServerSession(authOptions)
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <CurrencyProvider>
-            <AppShell>{children}</AppShell>
-            <Toaster position="top-right" />
-          </CurrencyProvider>
-        </ThemeProvider>
+        <SessionWrapper session={session}>
+          {children}
+        </SessionWrapper>
       </body>
     </html>
   )

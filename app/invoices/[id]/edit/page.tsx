@@ -155,7 +155,7 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
         <p className="text-gray-600 mt-2">Step {step} of 3</p>
       </div>
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-full mx-auto">
         {step === 1 && (
           <CustomerSelector
             selectedCustomer={selectedCustomer}

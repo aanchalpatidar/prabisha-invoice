@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CurrencySwitcher } from "@/components/currency-switcher";
 import { FileText, Receipt, Building2, Users, BarChart3, Pencil } from "lucide-react";
 
 export default function DashboardPage() {
+  const { data: session } = useSession();
   const [company, setCompany] = useState<any>(null);
+  
   useEffect(() => {
-    fetch("/api/company").then(res => res.json()).then(setCompany);
-  }, []);
+    if (session?.user?.id) {
+      fetch("/api/company").then(res => res.json()).then(setCompany);
+    }
+  }, [session?.user?.id]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
@@ -78,7 +83,7 @@ export default function DashboardPage() {
                 <Building2 className="h-5 w-5 text-purple-600" />
                 {company.name}
               </CardTitle>
-              <CardDescription>Company Details</CardDescription>
+              <CardDescription>Your Company Details</CardDescription>
             </CardHeader>
             <CardContent>
               {company.logoUrl && (
